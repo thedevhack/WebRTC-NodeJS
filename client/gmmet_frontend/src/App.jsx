@@ -4,6 +4,7 @@ import Landing from './components/Landing'
 import { createTheme, CssBaseline } from '@mui/material';
 import { ThemeProvider } from '@emotion/react';
 import MeetingPage from './components/MeetingPage';
+import Test from './components/Test';
 
 function App() {
 
@@ -38,6 +39,7 @@ function App() {
 
         <Route path='/meeting/:roomId' element={<MeetingPage/>} />
         <Route path='/' element={<Landing/>} />
+        <Route path='/test' element={<Test/>} />
       </Routes>
     </Router>
     </ThemeProvider>
