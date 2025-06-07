@@ -26,7 +26,7 @@ This is a peer-to-peer video calling web application built using **React**, **No
 
 ## 🚀 Getting Started
 
-### 1. Clone the repository
+### 🧱 1. Clone the Repository
 
 ```bash
 git clone https://github.com/thedevhack/WebRTC-NodeJS.git
