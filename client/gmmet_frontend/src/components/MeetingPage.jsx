@@ -6,12 +6,12 @@ import { Video } from "./Video"
 import socketIO  from 'socket.io-client'
 import ControlBar from "./ControlBar"
 
-let pc = new RTCPeerConnection({
-    iceServers:[{
-        "urls":"stun:stun.1.google.com:19302"
-    },
-],
-})
+// let pc = new RTCPeerConnection({
+//     iceServers:[{
+//         "urls":"stun:stun.1.google.com:19302"
+//     },
+// ],
+// })
 
 
 export default function MeetingPage(){
@@ -28,10 +28,26 @@ export default function MeetingPage(){
     const [audioDevices, setaudioDevices] = useState([])
     const [selectedvideoDeviceId, setselectedvideoDeviceId] = useState("")
     const [selectedaudioDeviceId, setselectedaudioDeviceId] = useState("")
-    const [localVideoTrack, setlocalVideoTrack] = useState(null);
-    const [localAudioTrack, setlocalAudioTrack] = useState(null);
-    const remoteMediaStream = null
+    const [pc, setPc] = useState(null)
 
+    const createPeerConnection = () => {
+        const newPc = new RTCPeerConnection({
+            iceServers:[{
+                "urls":"stun:stun.1.google.com:19302"
+            }],
+        })
+        
+        // Add connection state change handler
+        newPc.onconnectionstatechange = () => {
+            console.log('Connection state:', newPc.connectionState)
+            if (newPc.connectionState === 'failed' || newPc.connectionState === 'disconnected') {
+                console.log('Connection failed/disconnected, may need to recreate')
+            }
+        }
+        
+        setPc(newPc)
+        return newPc
+    }
 
     const userDisconnectProcess = () => {
         console.log("Bye Bye Everyone")
@@ -45,7 +61,7 @@ export default function MeetingPage(){
             pc.getSenders().forEach(sender => {
                 if (sender.track) sender.track.stop()
             })
-            // pc.close()
+            pc.close()
         }
 
         if (socket){
@@ -54,6 +70,7 @@ export default function MeetingPage(){
         setRemoteStream(null);
         setLocalStream(null);
         setSocket(null);
+        setPc(null);
         setMeetingJoined(false);
     }
     
@@ -66,11 +83,13 @@ export default function MeetingPage(){
 
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
+            userDisconnectProcess();
         };
     }, []);
 
     useEffect(() => {
 
+        const currentPc = createPeerConnection();
         const s = new socketIO.connect("http://localhost:3001")
         s.on("connect", () => {
 
@@ -94,7 +113,7 @@ export default function MeetingPage(){
                     setLocalStream(stream)
                     return navigator.mediaDevices.enumerateDevices()}).
                     then((devices) => {
-                        console.log(devices)
+                        // console.log(devices)
                         let extractedvideoDevices = []
                         let extractedmicDevices = []
                         for (let device in devices){
@@ -114,30 +133,36 @@ export default function MeetingPage(){
                 console.error("error while fetching media devices is -> ", err.message)
             }
 
+            s.on("userDisconnected", () => {
+                console.log("Remote user disconnected")
+                setRemoteStream(null)
+            })
+
             // receiving sdp
             s.on("localDescription", async ({description}) => {
-                console.log("Recieved Remote Stream and i am 1st User ->", description)
-                pc.setRemoteDescription(description)
+                // console.log("Recieved Remote Stream and i am 1st User ->", description)
+                currentPc.setRemoteDescription(description)
 
                 const remoteMediaStream = new MediaStream()
                 setRemoteStream(remoteMediaStream)
                 
-                pc.ontrack = (event) => {
+                currentPc.ontrack = (event) => {
+                    // console.log("ontrack event keys - 1st user",event)
                     event.streams[0].getTracks().forEach((track) => {
                         remoteMediaStream.addTrack(track)
                     })
                 }
 
                 s.on('iceCandidate', ({candidate}) => {
-                    pc.addIceCandidate(candidate)
+                    currentPc.addIceCandidate(candidate)
                 })
 
-                pc.onicecandidate = ({candidate}) => {
+                currentPc.onicecandidate = ({candidate}) => {
                     s.emit("iceCandidateReply", {candidate})
                 }
                 try{
-                    await pc.setLocalDescription(await pc.createAnswer())
-                    s.emit("remoteDescription", ({description:pc.localDescription}))
+                    await currentPc.setLocalDescription(await currentPc.createAnswer())
+                    s.emit("remoteDescription", ({description:currentPc.localDescription}))
                 }catch(err){
                     console.error(err.message)
                 }
@@ -145,24 +170,25 @@ export default function MeetingPage(){
 
             // receiving sdp
             s.on("remoteDescription", ({description}) => {
-                console.log("Recieved Remote Stream and i am 2nd User ->", description)
-                pc.setRemoteDescription(description)
+                // console.log("Recieved Remote Stream and i am 2nd User ->", description)
+                currentPc.setRemoteDescription(description)
 
                 const remoteMediaStream = new MediaStream()
                 setRemoteStream(remoteMediaStream)
 
-                pc.ontrack = (event) => {
-                    console.log("ontrack event keys",event)
+                currentPc.ontrack = (event) => {
+                    // console.log("ontrack event keys - 2nd user",event)
                     event.streams[0].getTracks().forEach((track) => {
+                            // console.log("adding tracks", track)
                         remoteMediaStream.addTrack(track)
                     })
                 }
 
                 s.on("iceCandidate", ({candidate}) => {
-                    pc.addIceCandidate(candidate)
+                    currentPc.addIceCandidate(candidate)
                 })
 
-                pc.onicecandidate = ({candidate}) => {
+                currentPc.onicecandidate = ({candidate}) => {
                     s.emit("iceCandidateReply", {candidate})
                 }
             })

@@ -40,12 +40,23 @@ io.on('connection', (socket) => {
 
     socket.on("disconnect", params => {
         console.log(users, socket.id)
-        let roomId = users[socket.id].roomId
-        rooms[roomId].users = rooms[roomId].users.filter((user) => user !== socket.id)
+        try{
+            let roomId = users[socket.id].roomId
+            let otherUsers = rooms[roomId].users
 
-        delete users[socket.id]
-
-        console.log("user disconnected from room -> " + roomId)
+            otherUsers.forEach(user => {
+                if (user !== socket.id){
+                    io.to(user).emit('userDisconnected', { userId: socket.id });
+                }
+            });
+            rooms[roomId].users = rooms[roomId].users.filter((user) => user !== socket.id)
+            delete users[socket.id]
+            console.log("user disconnected from room -> " + roomId)
+        }catch(err){
+            console.log(err.message)
+            window.location.href="/"
+        }
+        
     })
 
     socket.on("localDescription", (params) => {
