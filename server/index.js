@@ -18,7 +18,15 @@ const rooms = {}
 io.on('connection', (socket) => {
     console.log("User connected ")
     socket.on("join", (params) => {
+        console.log(users)
+
         let roomId = params.roomId;
+
+        if (rooms[roomId] && (rooms[roomId].users).length >= 2){
+            socket.emit("room-full", { message: "Room is full" });
+            return;
+        }
+
         users[socket.id] = {roomId}
 
         if (!rooms[roomId]){
@@ -31,13 +39,24 @@ io.on('connection', (socket) => {
     })
 
     socket.on("disconnect", params => {
+        console.log(users, socket.id)
+        try{
+            let roomId = users[socket.id].roomId
+            let otherUsers = rooms[roomId].users
+
+            otherUsers.forEach(user => {
+                if (user !== socket.id){
+                    io.to(user).emit('userDisconnected', { userId: socket.id });
+                }
+            });
+            rooms[roomId].users = rooms[roomId].users.filter((user) => user !== socket.id)
+            delete users[socket.id]
+            console.log("user disconnected from room -> " + roomId)
+        }catch(err){
+            console.log(err.message)
+            window.location.href="/"
+        }
         
-        let roomId = users[socket.id].roomId
-        rooms[roomId].users = rooms[roomId].users.filter((user) => user !== socket.id)
-
-        delete users[socket.id]
-
-        console.log("user disconnected from room -> " + roomId)
     })
 
     socket.on("localDescription", (params) => {
