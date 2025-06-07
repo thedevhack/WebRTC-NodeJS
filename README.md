@@ -29,5 +29,34 @@ This is a peer-to-peer video calling web application built using **React**, **No
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/webrtc-video-app.git
-cd webrtc-video-app
+git clone https://github.com/thedevhack/WebRTC-NodeJS.git
+cd WebRTC-NodeJS
+```
+
+### 🔌 2. Start the Backend Server
+
+```bash
+cd server
+npm install
+node ./index.js
+```
+
+
+### 💻 3. Start the Frontend (React App)
+
+```bash
+cd client/gmmet_frontend
+npm install
+npm run dev
+```
+
+## 🎉 You're Live!
+Visit http://localhost:5173 in two browser tabs or two devices and see it in action!(make sure both tabs have same meeting id)
+
+> ⚠️ **Note:**  
+> This project currently supports **only 1-to-1 video calling**.  
+> 
+> If more than 2 users join the same room:
+> - The app may behave unexpectedly.
+> - WebRTC connection logic might break.
+> - There are no safeguards for additional peers.
